@@ -11,7 +11,7 @@ students <- read.csv("students.csv")
 dept_code <- "BUSEN"
 offer_code <- "3002"
 
-gender <- "Male"
+gender1 <- "Male"
 gender2 <- "Female"
 
 # Function 1 test (Finished)
@@ -30,7 +30,7 @@ special_class(subj_offerings, study_load)
 class_list(students, study_load, offer_code)
 
 # Function 6 test (Finished)
-grade_mean_by_gender(students, gender)
+grade_mean_by_gender(students, gender1)
 
 # Function 7 test (Finished)
 grade_IQ(students)

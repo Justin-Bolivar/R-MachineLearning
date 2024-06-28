@@ -1,4 +1,4 @@
-install.packages(c("dplyr", "tidyr"))
+#install.packages(c("dplyr", "tidyr"))
 library(dplyr)
 library(tidyr)
 
@@ -17,6 +17,7 @@ dissolve_rate <- function(offerings, dept) {
 #Function 2 (Finished)
 dept_course_listing <- function(offerings, dept) {
   dept_offerings <- offerings[offerings$dept_code == dept,]
+  
   return(dept_offerings$offer_no)
 }
 
@@ -30,16 +31,17 @@ dept_density <- function(offerings, student_load, dept) {
   return(mean_density)
 }
 
-# Function 4 
+# Function 4 (Finished Need Double Checking)
 special_class <- function(offerings, load) {
-  merged <- merge(offerings, load, by = "offer_no")
-  class_size <- aggregate(stud_id ~ offer_no, merged = merged, FUN = length)
-  names(class_size)[2] <- "class_size"
+  active_classes <- subset(subj_offerings, status != "DSLVD")
+  class_sizes <- table(load$offer_no)
+  class_sizes_df <- as.data.frame(class_sizes)
+  names(class_sizes_df) <- c("offer_no", "class_size")
+  merged_data <- merge(active_classes, class_sizes_df, by = "offer_no")
+  low_density_classes <- subset(merged_data, class_size < 20)
   
-  unique_data <- unique(merged[, -which(names(merged) == "stud_id")])
-  final_data <- merge(unique_data, class_size, by = "offer_no")
   
-  return(final_data)
+  return(low_density_classes)
 }
 
 # Function 5 (Finished)
@@ -68,8 +70,7 @@ grade_IQ <- function(students) {
 grade_age<- function(students) {
   current_date <- Sys.Date()
   students$birthdate <- as.Date(students$birthdate, format = "%Y-%m-%d")
-  students$age <- as.numeric(difftime(current_date, students$birthdate, units = "weeks")) / 52.25
-  
+  students$age <- as.numeric(difftime(current_date, students$birthdate, units = "weeks")) / 52.2
   complete_cases <- complete.cases(students$avg_grade, students$age)
   filtered_students <- students[complete_cases, ]
   
@@ -80,7 +81,7 @@ grade_age<- function(students) {
   return(cor(filtered_students$avg_grade, filtered_students$age, use = "complete.obs"))
 }
 
-# Part 2 Questions---------------------------------------------------------------------------------------------------
+# --------------------------------------------- Part 2 Questions ---------------------------------------------
 #.1 (Finished)
 withdraw <- function(load) {
   withdrawal <- load[load$wdw == 1, ]
@@ -100,23 +101,34 @@ most_dissolved <- function(offerings) {
 
 
 #.3
-highest_special <- function(offerings, student_load) {
-  special_classes <- special_class(offerings, student_load)
-  special_by_dept <- table(special_classes$dept_code)
-  highest_special_dept <- names(which.max(special_by_dept))
+highest_special <- function(offerings, load) {
+  special_classes <- special_class(subj_offerings, load)
+  department_counts <- table(special_classes$dept_code)
+  highest_dept <- names(which.max(department_counts))
   
-  return(highest_special_dept)
+  return(highest_dept)
 }
 
 #.4
-college_lowest_density <- function(offerings, student_load) {
-  density_by_college <- aggregate(offerings$dept_code, by = list(offerings$dept_code), FUN = function(dept) {
-    dept_density(offerings[offerings$dept_code == dept, ], student_load, dept)
-  })
-  lowest_density_college <- density_by_college[which.min(density_by_college$x), ]$Group.1
+college_lowest_density <- function(offerings, load) {
+  class_sizes <- table(load$offer_no)
+  class_sizes_df <- as.data.frame(class_sizes)
+  names(class_sizes_df) <- c("offer_no", "class_size")
+  merged_data <- merge(subj_offerings, class_sizes_df, by = "offer_no")
+  density_data <- aggregate(class_size ~ dept_code, data = merged_data, mean)
+  lowest_density_dept <- density_data$dept_code[which.min(density_data$class_size)]
   
-  return(lowest_density_college)
+  return(lowest_density_dept)
 }
 
 
 #.5
+time_spent <- function(offerings, load) {
+  merged_data <- merge(load, subj_offerings, by = "offer_no")
+  merged_data$start_time <- as.POSIXct(strptime(sub(" -.*", "", merged_data$sch_time), format = "%I:%M %p"))
+  merged_data$end_time <- as.POSIXct(strptime(sub(".*- ", "", merged_data$sch_time), format = "%I:%M %p"))
+  merged_data$duration <- as.numeric(difftime(merged_data$end_time, merged_data$start_time, units = "hours"))
+  duration_data <- aggregate(duration ~ dept_code, data = merged_data, mean)
+  
+  return(duration_data)
+}
